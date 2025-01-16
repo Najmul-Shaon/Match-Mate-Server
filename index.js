@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 
@@ -29,15 +29,24 @@ async function run() {
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
+
+    //   all collections of database
+    const biodataCollection = client.db("matchMateDB").collection("bioDatas");
+
+    // get all biodata
+    app.get("/biodatas", async (req, res) => {
+      const result = await biodataCollection.find().toArray();
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Server is running");
+  res.send("Match Mate Server is running");
 });
 app.listen(port, () => {
   console.log(`Server is running at ${port}`);
