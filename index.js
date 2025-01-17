@@ -32,10 +32,24 @@ async function run() {
 
     //   all collections of database
     const biodataCollection = client.db("matchMateDB").collection("bioDatas");
+    const usersCollection = client.db("matchMateDB").collection("users");
 
     // get all biodata
     app.get("/biodatas", async (req, res) => {
       const result = await biodataCollection.find().toArray();
+      res.send(result);
+    });
+
+    //   create user
+    app.post("/user", async (req, res) => {
+      const user = req.body;
+      // check user exist or not
+      const query = { email: user.email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "User already exists", insertedId: null });
+      }
+      const result = await usersCollection.insertOne(user);
       res.send(result);
     });
   } finally {
