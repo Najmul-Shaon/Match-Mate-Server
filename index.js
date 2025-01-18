@@ -4,6 +4,7 @@ const cors = require("cors");
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SK);
 
 // middleware
 app.use(cors());
@@ -44,13 +45,27 @@ async function run() {
     app.post("/user", async (req, res) => {
       const user = req.body;
       // check user exist or not
-      const query = { email: user.email };
+      const query = { userEmail: user.email };
       const existingUser = await usersCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "User already exists", insertedId: null });
       }
       const result = await usersCollection.insertOne(user);
       res.send(result);
+    });
+
+    //   payment gateway
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
   } finally {
     // Ensures that the client will close when you finish/error
