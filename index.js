@@ -42,6 +42,15 @@ async function run() {
       res.send(result);
     });
 
+    // get specific biodata by email
+    app.get("/biodata", async (req, res) => {
+      const queryEmail = req.query.email;
+      console.log(queryEmail);
+      const query = { userEmail: queryEmail };
+      const result = await biodataCollection.find(query).toArray();
+      res.send(result);
+    });
+
     //   create biodata
     app.post("/biodatas", async (req, res) => {
       try {
