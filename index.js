@@ -34,7 +34,11 @@ async function run() {
     //   all collections of database
     const biodataCollection = client.db("matchMateDB").collection("bioDatas");
     const usersCollection = client.db("matchMateDB").collection("users");
-    // const counterCollection = client.db("matchMateDB").collection("counter");
+    const contactRequestCollection = client
+      .db("matchMateDB")
+      .collection("contactRequest");
+
+    const paymentCollection = client.db("matchMateDB").collection("payments");
 
     // get all biodata
     app.get("/biodatas", async (req, res) => {
@@ -47,8 +51,18 @@ async function run() {
     app.get("/biodata/details/:biodataId", async (req, res) => {
       const biodataIdFromParams = req.params.biodataId;
       const biodataIntIdFromParams = parseInt(biodataIdFromParams);
+      const { fields } = req.query;
+      let projection = {};
+      if (fields) {
+        const fieldArray = fields.split(",");
+        fieldArray.forEach((field) => {
+          projection[field] = 1;
+        });
+      }
+
       const query = { biodataId: biodataIntIdFromParams };
-      const result = await biodataCollection.find(query).toArray();
+      const result = await biodataCollection.findOne(query, { projection });
+
       res.send(result);
     });
 
@@ -57,7 +71,7 @@ async function run() {
       const queryEmail = req.query.email;
       console.log(queryEmail);
       const query = { userEmail: queryEmail };
-      const result = await biodataCollection.find(query).toArray();
+      const result = await biodataCollection.findOne(query);
       res.send(result);
     });
 
@@ -83,6 +97,37 @@ async function run() {
       } catch (error) {
         console.log("error from inside catch", error);
       }
+    });
+
+    // create contact request
+    app.post("/contactRequest", async (req, res) => {
+      const request = req.body;
+      console.log(request);
+      const query = {
+        biodataId: request.biodataId,
+        userEmail: request.userEmail,
+      };
+      const exist = await contactRequestCollection.findOne(query);
+      if (exist) {
+        return res.send({ message: "You have already paid for this biodada" });
+      }
+      const result = await contactRequestCollection.insertOne(request);
+      res.send(result);
+    });
+
+    // create payment
+    app.post("/makePayment", async (req, res) => {
+      const payment = req.body;
+      const query = {
+        biodataId: payment.biodataId,
+        userEmail: payment.userEmail,
+      };
+      const exist = await paymentCollection.findOne(query);
+      if (exist) {
+        return res.send({ message: "Alredy Paid" });
+      }
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
     });
 
     //   create user
