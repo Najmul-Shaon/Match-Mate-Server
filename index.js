@@ -34,11 +34,36 @@ async function run() {
     //   all collections of database
     const biodataCollection = client.db("matchMateDB").collection("bioDatas");
     const usersCollection = client.db("matchMateDB").collection("users");
+    // const counterCollection = client.db("matchMateDB").collection("counter");
 
     // get all biodata
     app.get("/biodatas", async (req, res) => {
       const result = await biodataCollection.find().toArray();
       res.send(result);
+    });
+
+    //   create biodata
+    app.post("/biodatas", async (req, res) => {
+      try {
+        const lastBiodata = await biodataCollection
+          .find()
+          .sort({ biodataId: -1 })
+          .limit(1)
+          .toArray();
+
+        // generate new biodata id
+        const newId = lastBiodata.length > 0 ? lastBiodata[0].biodataId + 1 : 1;
+
+        // after creation biodata id, new biodata will be
+        const newBiodata = {
+          biodataId: newId,
+          ...req.body,
+        };
+        const result = await biodataCollection.insertOne(newBiodata);
+        res.send(result);
+      } catch (error) {
+        console.log("error from inside catch", error);
+      }
     });
 
     //   create user
