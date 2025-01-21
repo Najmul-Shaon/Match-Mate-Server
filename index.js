@@ -42,7 +42,17 @@ async function run() {
       res.send(result);
     });
 
-    // get specific biodata by email
+    // get specific biodata by id (params)
+
+    app.get("/biodata/details/:biodataId", async (req, res) => {
+      const biodataIdFromParams = req.params.biodataId;
+      const biodataIntIdFromParams = parseInt(biodataIdFromParams);
+      const query = { biodataId: biodataIntIdFromParams };
+      const result = await biodataCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // get specific biodata by email (query)
     app.get("/biodata", async (req, res) => {
       const queryEmail = req.query.email;
       console.log(queryEmail);
