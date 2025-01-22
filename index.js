@@ -107,10 +107,10 @@ async function run() {
         biodataId: request.biodataId,
         userEmail: request.userEmail,
       };
-      const exist = await contactRequestCollection.findOne(query);
-      if (exist) {
-        return res.send({ message: "You have already paid for this biodada" });
-      }
+      // const exist = await contactRequestCollection.findOne(query);
+      // if (exist) {
+      //   return res.send({ message: "You have already paid for this biodada" });
+      // }
       const result = await contactRequestCollection.insertOne(request);
       res.send(result);
     });
@@ -118,11 +118,6 @@ async function run() {
     // get requested contacts for specific user by email
     app.get("/contactRequest", async (req, res) => {
       const userEmail = req.query.email;
-      console.log(userEmail);
-
-      // const query = { userEmail: userEmail };
-
-      // const result = await contactRequestCollection.find(query).toArray();
 
       try {
         const result = await contactRequestCollection
@@ -164,17 +159,25 @@ async function run() {
       }
     });
 
+    // delete requested contact by id
+    app.delete("/contactRequest/:biodataId", async (req, res) => {
+      const { biodataId } = req.params;
+      const query = { biodataId: biodataId };
+      const result = await contactRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // create payment
     app.post("/makePayment", async (req, res) => {
       const payment = req.body;
-      const query = {
-        biodataId: payment.biodataId,
-        userEmail: payment.userEmail,
-      };
-      const exist = await paymentCollection.findOne(query);
-      if (exist) {
-        return res.send({ message: "Alredy Paid" });
-      }
+      // const query = {
+      //   biodataId: payment.biodataId,
+      //   userEmail: payment.userEmail,
+      // };
+      // const exist = await paymentCollection.findOne(query);
+      // if (exist) {
+      //   return res.send({ message: "Alredy Paid" });
+      // }
       const result = await paymentCollection.insertOne(payment);
       res.send(result);
     });
