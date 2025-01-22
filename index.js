@@ -42,6 +42,9 @@ async function run() {
       .collection("contactRequest");
 
     const paymentCollection = client.db("matchMateDB").collection("payments");
+    const premiumRequestCollection = client
+      .db("matchMateDB")
+      .collection("premiumRequest");
 
     // get all biodata
     app.get("/biodatas", async (req, res) => {
@@ -167,6 +170,31 @@ async function run() {
       const { biodataId } = req.params;
       const query = { biodataId: biodataId };
       const result = await contactRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // create make premium biodata
+    app.post("/premiumRequest", async (req, res) => {
+      const biodataInfo = req.body;
+      // console.log(biodataInfo);
+      const result = await premiumRequestCollection.insertOne(biodataInfo);
+      res.send(result);
+    });
+
+    // get all premium biodata (for admin)
+    app.get("/premiumRequest", async (req, res) => {
+      const result = await premiumRequestCollection.find().toArray();
+      res.send(result);
+    });
+
+    // delete individual premium request
+    app.delete("/delete/premiumRequest/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = {
+        biodataId: parseInt(id),
+      };
+      const result = await premiumRequestCollection.deleteOne(query);
       res.send(result);
     });
 
