@@ -121,11 +121,19 @@ async function run() {
       res.send(result);
     });
 
-    // get requested contacts for specific user by email
+    // get requested contacts for specific user by email or if email not provided
     app.get("/contactRequest", async (req, res) => {
       const userEmail = req.query.email;
 
+      const query = {
+        requestStatus: "pending",
+      };
+
       try {
+        if (!userEmail) {
+          const result = await contactRequestCollection.find(query).toArray();
+          return res.send(result);
+        }
         const result = await contactRequestCollection
           .aggregate([
             { $match: { userEmail } },
@@ -170,6 +178,23 @@ async function run() {
       const { biodataId } = req.params;
       const query = { biodataId: biodataId };
       const result = await contactRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // update contact request (approved)
+    app.patch("/update/contactRequest/:id", async (req, res) => {
+      const { id } = req.params;
+      console.log(typeof id);
+      const query = {
+        biodataId: id,
+      };
+      const updateDoc = {
+        $set: {
+          requestStatus: "approved",
+        },
+      };
+
+      const result = await contactRequestCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
