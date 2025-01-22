@@ -250,6 +250,34 @@ async function run() {
       res.send(result);
     });
 
+    // update user role
+    app.patch("/user/role/:email", async (req, res) => {
+      const { role } = req.query;
+      const { email } = req.params;
+      console.log(role, email);
+      const query = {
+        userEmail: email,
+      };
+      if (role === "admin") {
+        const updateDoc = {
+          $set: {
+            userRole: "admin",
+          },
+        };
+        const result = await usersCollection.updateOne(query, updateDoc);
+        return res.send(result);
+      } else if (role === "premium") {
+        const updateDoc = {
+          $set: {
+            userRole: "premium",
+          },
+        };
+        const result = await usersCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
+      // res.send({ message: "done" });
+    });
+
     //   payment gateway
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
