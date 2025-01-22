@@ -102,7 +102,7 @@ async function run() {
     // create contact request
     app.post("/contactRequest", async (req, res) => {
       const request = req.body;
-      console.log(request);
+      // console.log(request);
       const query = {
         biodataId: request.biodataId,
         userEmail: request.userEmail,
@@ -113,6 +113,55 @@ async function run() {
       }
       const result = await contactRequestCollection.insertOne(request);
       res.send(result);
+    });
+
+    // get requested contacts for specific user by email
+    app.get("/contactRequest", async (req, res) => {
+      const userEmail = req.query.email;
+      console.log(userEmail);
+
+      // const query = { userEmail: userEmail };
+
+      // const result = await contactRequestCollection.find(query).toArray();
+
+      try {
+        const result = await contactRequestCollection
+          .aggregate([
+            { $match: { userEmail } },
+            {
+              $addFields: {
+                biodataIdInt: { $toInt: "$biodataId" },
+              },
+            },
+            {
+              $lookup: {
+                from: "bioDatas",
+                localField: "biodataIdInt",
+                foreignField: "biodataId",
+                as: "contactDetails",
+              },
+            },
+            {
+              $unwind: "$contactDetails",
+            },
+            {
+              $project: {
+                _id: 1,
+                userEmail: 1,
+                biodataId: 1,
+                requestStatus: 1,
+                name: "$contactDetails.personalInfo.name",
+                phone: "$contactDetails.personalInfo.userPhone",
+              },
+            },
+          ])
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.log("error on catch", error);
+        res.send({ message: "not found" });
+      }
     });
 
     // create payment
