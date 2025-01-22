@@ -207,7 +207,7 @@ async function run() {
     // delete from fvrt by id and email
     app.delete("/favorite/delete", async (req, res) => {
       const { bioId, email } = req.query;
-      
+
       const query = {
         biodataId: parseInt(bioId),
         userEmail: email,
@@ -220,12 +220,33 @@ async function run() {
     app.post("/user", async (req, res) => {
       const user = req.body;
       // check user exist or not
-      const query = { userEmail: user.email };
+      // console.log(user);
+      const query = { userEmail: user.userEmail };
       const existingUser = await usersCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "User already exists", insertedId: null });
       }
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // get all users
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // delete user
+    app.delete("/delete/user", async (req, res) => {
+      const { targetEmail, user } = req.query;
+      // console.log(targetEmail, user);
+      const query = {
+        userEmail: targetEmail,
+      };
+      if (user === targetEmail) {
+        return res.send({ message: "Same user" });
+      }
+      const result = await usersCollection.deleteOne(query);
       res.send(result);
     });
 
