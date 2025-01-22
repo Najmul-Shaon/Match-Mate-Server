@@ -72,7 +72,7 @@ async function run() {
     // get specific biodata by email (query)
     app.get("/biodata", async (req, res) => {
       const queryEmail = req.query.email;
-      console.log(queryEmail);
+      // console.log(queryEmail);
       const query = { userEmail: queryEmail };
       const result = await biodataCollection.findOne(query);
       res.send(result);
@@ -98,7 +98,7 @@ async function run() {
         const result = await biodataCollection.insertOne(newBiodata);
         res.send(result);
       } catch (error) {
-        console.log("error from inside catch", error);
+        // console.log("error from inside catch", error);
       }
     });
 
@@ -157,7 +157,7 @@ async function run() {
 
         res.send(result);
       } catch (error) {
-        console.log("error on catch", error);
+        // console.log("error on catch", error);
         res.send({ message: "not found" });
       }
     });
@@ -188,8 +188,31 @@ async function run() {
     // create favorotes biodata
     app.post("/favorites", async (req, res) => {
       const fvrtBiodata = req.body;
-      console.log(fvrtBiodata);
+      // console.log(fvrtBiodata);
       const result = await favoritesCollection.insertOne(fvrtBiodata);
+      res.send(result);
+    });
+
+    // get all fvrts by user email api
+    app.get("/favorites", async (req, res) => {
+      const { email } = req.query;
+      const query = {
+        userEmail: email,
+      };
+      const result = await favoritesCollection.find(query).toArray();
+      res.send(result);
+      // console.log(email);
+    });
+
+    // delete from fvrt by id and email
+    app.delete("/favorite/delete", async (req, res) => {
+      const { bioId, email } = req.query;
+      
+      const query = {
+        biodataId: parseInt(bioId),
+        userEmail: email,
+      };
+      const result = await favoritesCollection.deleteOne(query);
       res.send(result);
     });
 
