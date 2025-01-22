@@ -34,6 +34,9 @@ async function run() {
     //   all collections of database
     const biodataCollection = client.db("matchMateDB").collection("bioDatas");
     const usersCollection = client.db("matchMateDB").collection("users");
+    const favoritesCollection = client
+      .db("matchMateDB")
+      .collection("favorites");
     const contactRequestCollection = client
       .db("matchMateDB")
       .collection("contactRequest");
@@ -179,6 +182,14 @@ async function run() {
       //   return res.send({ message: "Alredy Paid" });
       // }
       const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
+
+    // create favorotes biodata
+    app.post("/favorites", async (req, res) => {
+      const fvrtBiodata = req.body;
+      console.log(fvrtBiodata);
+      const result = await favoritesCollection.insertOne(fvrtBiodata);
       res.send(result);
     });
 
