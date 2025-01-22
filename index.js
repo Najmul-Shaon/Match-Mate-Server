@@ -183,7 +183,10 @@ async function run() {
 
     // get all premium biodata (for admin)
     app.get("/premiumRequest", async (req, res) => {
-      const result = await premiumRequestCollection.find().toArray();
+      const query = {
+        status: "pending",
+      };
+      const result = await premiumRequestCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -195,6 +198,21 @@ async function run() {
         biodataId: parseInt(id),
       };
       const result = await premiumRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // update status of premium request
+    app.patch("/update/premiumRequest/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        biodataId: parseInt(id),
+      };
+      const updateDoc = {
+        $set: {
+          status: "approved",
+        },
+      };
+      const result = await premiumRequestCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
@@ -282,7 +300,7 @@ async function run() {
     app.patch("/user/role/:email", async (req, res) => {
       const { role } = req.query;
       const { email } = req.params;
-      console.log(role, email);
+      // console.log(role, email);
       const query = {
         userEmail: email,
       };
