@@ -34,6 +34,7 @@ async function run() {
     //   all collections of database
     const biodataCollection = client.db("matchMateDB").collection("bioDatas");
     const usersCollection = client.db("matchMateDB").collection("users");
+    const marriedCollection = client.db("matchMateDB").collection("married");
     const favoritesCollection = client
       .db("matchMateDB")
       .collection("favorites");
@@ -101,13 +102,6 @@ async function run() {
           newId += 1;
           existId = await biodataCollection.findOne({ biodataId: newId });
         }
-
-        // after creation biodata id, new biodata will be
-        // const newBiodata = {
-        //   biodataId: newId,
-        //   ...req.body,
-        // };
-
         const updateDoc = {
           $set: {
             biodataId: newId,
@@ -123,6 +117,50 @@ async function run() {
         // console.log("error from inside catch", error);
       }
     });
+    // ***********************************************
+    // count biodata
+    app.get("/biodataCount", async (req, res) => {
+      const totalBiodata = await biodataCollection.estimatedDocumentCount();
+      const totalMaleBiodata = await biodataCollection.countDocuments({
+        "personalInfo.biodataType": "Male",
+      });
+      const totalFemaleBiodata = await biodataCollection.countDocuments({
+        "personalInfo.biodataType": "Female",
+      });
+      const premiumUsers = await usersCollection
+        .find({ userRole: "premium" })
+        .toArray();
+      const premiumUsersId = premiumUsers.map(
+        (premiumUser) => premiumUser.userEmail
+      );
+      const totalPremiumBiodata = await biodataCollection.countDocuments({
+        userEmail: { $in: premiumUsersId },
+      });
+      const totalAmount = await paymentCollection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: "$amount" },
+            },
+          },
+        ])
+        .toArray();
+      const amount = totalAmount.length > 0 ? totalAmount[0].totalAmount : 0;
+
+      const totalMarried = await marriedCollection.estimatedDocumentCount();
+      const result = {
+        totalBiodata,
+        totalMaleBiodata,
+        totalFemaleBiodata,
+        totalPremiumBiodata,
+        amount,
+        totalMarried,
+      };
+      // console.log(totalBiodata);
+      res.send(result);
+    });
+    // ***********************************************
 
     // create contact request
     app.post("/contactRequest", async (req, res) => {
@@ -132,10 +170,7 @@ async function run() {
         biodataId: request.biodataId,
         userEmail: request.userEmail,
       };
-      // const exist = await contactRequestCollection.findOne(query);
-      // if (exist) {
-      //   return res.send({ message: "You have already paid for this biodada" });
-      // }
+
       const result = await contactRequestCollection.insertOne(request);
       res.send(result);
     });
@@ -323,6 +358,7 @@ async function run() {
     // get all users
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
+      console.log(result);
       res.send(result);
     });
 
