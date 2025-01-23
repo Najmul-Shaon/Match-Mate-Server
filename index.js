@@ -84,6 +84,10 @@ async function run() {
     //   create biodata
     app.post("/biodatas", async (req, res) => {
       try {
+        const { userEmail } = req.body;
+        // console.log(userEmail);
+        const query = { userEmail: userEmail };
+
         const lastBiodata = await biodataCollection
           .find()
           .sort({ biodataId: -1 })
@@ -91,14 +95,29 @@ async function run() {
           .toArray();
 
         // generate new biodata id
-        const newId = lastBiodata.length > 0 ? lastBiodata[0].biodataId + 1 : 1;
+        let newId = lastBiodata.length > 0 ? lastBiodata[0].biodataId + 1 : 1;
+        let existId = await biodataCollection.findOne({ biodataId: newId });
+        while (existId) {
+          newId += 1;
+          existId = await biodataCollection.findOne({ biodataId: newId });
+        }
 
         // after creation biodata id, new biodata will be
-        const newBiodata = {
-          biodataId: newId,
-          ...req.body,
+        // const newBiodata = {
+        //   biodataId: newId,
+        //   ...req.body,
+        // };
+
+        const updateDoc = {
+          $set: {
+            biodataId: newId,
+            ...req.body,
+          },
         };
-        const result = await biodataCollection.insertOne(newBiodata);
+
+        const result = await biodataCollection.updateOne(query, updateDoc, {
+          upsert: true,
+        });
         res.send(result);
       } catch (error) {
         // console.log("error from inside catch", error);
