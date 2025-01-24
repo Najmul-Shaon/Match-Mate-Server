@@ -49,7 +49,31 @@ async function run() {
 
     // get all biodata
     app.get("/biodatas", async (req, res) => {
-      const result = await biodataCollection.find().toArray();
+      const { minAge, maxAge, biodataType, divisions } = req.query;
+
+      const query = {};
+
+      if (minAge || maxAge) {
+        query["personalInfo.age"] = {};
+        if (minAge) {
+          query["personalInfo.age"].$gte = minAge.toString();
+        }
+        if (maxAge) {
+          query["personalInfo.age"].$lte = maxAge.toString();
+        }
+      }
+
+      if (biodataType) {
+        query["personalInfo.biodataType"] = { $in: biodataType.split(",") };
+      }
+
+      if (divisions) {
+        query["personalInfo.address.permanent.division"] = {
+          $in: divisions.split(","),
+        };
+      }
+      // console.log(q);
+      const result = await biodataCollection.find(query).toArray();
       res.send(result);
     });
 
