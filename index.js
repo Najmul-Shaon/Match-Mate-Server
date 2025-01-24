@@ -118,6 +118,31 @@ async function run() {
       }
     });
     // ***********************************************
+    // featured profile (premium profile:max 6)
+    // ***********************************************
+    app.get("/premiumProfile", async (req, res) => {
+      const { sortby } = req.query;
+      console.log(sortby);
+      const premiumUser = await usersCollection
+        .find({ userRole: "premium" })
+        .toArray();
+      // console.log(premiumUser);
+      const premiumUsersEmail = premiumUser.map((user) => user.userEmail);
+
+      const setOrder = sortby === "asc" ? 1 : -1;
+
+      // console.log(premiumUsersEmail);
+      const premiumBiodata = await biodataCollection
+        .find({
+          userEmail: { $in: premiumUsersEmail },
+        })
+        .sort({ "personalInfo.age": setOrder })
+        .limit(6)
+        .toArray();
+      res.send(premiumBiodata);
+      // console.log(premiumBiodata);
+    });
+    // ***********************************************
     // count biodata
     app.get("/biodataCount", async (req, res) => {
       const totalBiodata = await biodataCollection.estimatedDocumentCount();
