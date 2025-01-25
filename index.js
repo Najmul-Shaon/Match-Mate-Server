@@ -397,6 +397,18 @@ async function run() {
       res.send(result);
     });
 
+    // get success story
+    app.get("/successStory", async (req, res) => {
+      const result = await marriedCollection
+        .find()
+        .sort({
+          marriageDate: 1,
+        })
+        .toArray();
+      console.log(result);
+      res.send(result);
+    });
+
     //   create user
     app.post("/user", async (req, res) => {
       const user = req.body;
