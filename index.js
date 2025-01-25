@@ -390,6 +390,13 @@ async function run() {
       res.send(result);
     });
 
+    // create success story
+    app.post("/successStory", async (req, res) => {
+      const story = req.body;
+      const result = await marriedCollection.insertOne(story);
+      res.send(result);
+    });
+
     //   create user
     app.post("/user", async (req, res) => {
       const user = req.body;
