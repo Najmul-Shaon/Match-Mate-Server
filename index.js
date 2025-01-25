@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 3000;
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SK);
 
@@ -407,6 +407,15 @@ async function run() {
         .toArray();
       console.log(result);
       res.send(result);
+    });
+
+    // delete success story
+    app.delete("/successStory/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await marriedCollection.deleteOne(query);
+      res.send(result);
+      console.log(id);
     });
 
     //   create user
