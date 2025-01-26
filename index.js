@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
@@ -47,6 +48,44 @@ async function run() {
       .db("matchMateDB")
       .collection("premiumRequest");
 
+    // jwt api
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
+    // middleware
+    const  verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized accecss" });
+      }
+
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN, (error, decoded) => {
+        if (error) {
+          return res.status(401).send({ message: "unauthorized access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+      // next();
+    };
+
+    // verify Admin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.userRole === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
     // get all biodata
     app.get("/biodatas", async (req, res) => {
       const { minAge, maxAge, biodataType, divisions } = req.query;
@@ -72,14 +111,13 @@ async function run() {
           $in: divisions.split(","),
         };
       }
-      // console.log(q);
       const result = await biodataCollection.find(query).toArray();
       res.send(result);
     });
 
     // get specific biodata by id (params)
 
-    app.get("/biodata/details/:biodataId", async (req, res) => {
+    app.get("/biodata/details/:biodataId", verifyToken, async (req, res) => {
       const biodataIdFromParams = req.params.biodataId;
       const biodataIntIdFromParams = parseInt(biodataIdFromParams);
       const { fields } = req.query;
@@ -98,19 +136,17 @@ async function run() {
     });
 
     // get specific biodata by email (query)
-    app.get("/biodata", async (req, res) => {
+    app.get("/biodata", verifyToken, async (req, res) => {
       const queryEmail = req.query.email;
-      // console.log(queryEmail);
       const query = { userEmail: queryEmail };
       const result = await biodataCollection.findOne(query);
       res.send(result);
     });
 
     //   create biodata
-    app.post("/biodatas", async (req, res) => {
+    app.post("/biodatas", verifyToken, async (req, res) => {
       try {
         const { userEmail } = req.body;
-        // console.log(userEmail);
         const query = { userEmail: userEmail };
 
         const lastBiodata = await biodataCollection
@@ -137,25 +173,20 @@ async function run() {
           upsert: true,
         });
         res.send(result);
-      } catch (error) {
-        // console.log("error from inside catch", error);
-      }
+      } catch (error) {}
     });
     // ***********************************************
-    // featured profile (premium profile:max 6)
+    // featured profile (premium profile:max 6) public
     // ***********************************************
     app.get("/premiumProfile", async (req, res) => {
       const { sortby } = req.query;
-      console.log(sortby);
       const premiumUser = await usersCollection
         .find({ userRole: "premium" })
         .toArray();
-      // console.log(premiumUser);
       const premiumUsersEmail = premiumUser.map((user) => user.userEmail);
 
       const setOrder = sortby === "asc" ? 1 : -1;
 
-      // console.log(premiumUsersEmail);
       const premiumBiodata = await biodataCollection
         .find({
           userEmail: { $in: premiumUsersEmail },
@@ -164,10 +195,9 @@ async function run() {
         .limit(6)
         .toArray();
       res.send(premiumBiodata);
-      // console.log(premiumBiodata);
     });
     // ***********************************************
-    // count biodata
+    // count biodata public
     app.get("/biodataCount", async (req, res) => {
       const totalBiodata = await biodataCollection.estimatedDocumentCount();
       const totalMaleBiodata = await biodataCollection.countDocuments({
@@ -206,15 +236,13 @@ async function run() {
         amount,
         totalMarried,
       };
-      // console.log(totalBiodata);
       res.send(result);
     });
     // ***********************************************
 
-    // create contact request
-    app.post("/contactRequest", async (req, res) => {
+    // create contact request #private
+    app.post("/contactRequest", verifyToken, async (req, res) => {
       const request = req.body;
-      // console.log(request);
       const query = {
         biodataId: request.biodataId,
         userEmail: request.userEmail,
@@ -225,7 +253,7 @@ async function run() {
     });
 
     // get requested contacts for specific user by email or if email not provided
-    app.get("/contactRequest", async (req, res) => {
+    app.get("/contactRequest", verifyToken, async (req, res) => {
       const userEmail = req.query.email;
 
       const query = {
@@ -271,7 +299,6 @@ async function run() {
 
         res.send(result);
       } catch (error) {
-        // console.log("error on catch", error);
         res.send({ message: "not found" });
       }
     });
@@ -284,33 +311,39 @@ async function run() {
       res.send(result);
     });
 
-    // update contact request (approved)
-    app.patch("/update/contactRequest/:id", async (req, res) => {
-      const { id } = req.params;
-      console.log(typeof id);
-      const query = {
-        biodataId: id,
-      };
-      const updateDoc = {
-        $set: {
-          requestStatus: "approved",
-        },
-      };
+    // update contact request (approved) admin
+    app.patch(
+      "/update/contactRequest/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const query = {
+          biodataId: id,
+        };
+        const updateDoc = {
+          $set: {
+            requestStatus: "approved",
+          },
+        };
 
-      const result = await contactRequestCollection.updateOne(query, updateDoc);
-      res.send(result);
-    });
+        const result = await contactRequestCollection.updateOne(
+          query,
+          updateDoc
+        );
+        res.send(result);
+      }
+    );
 
-    // create make premium biodata
-    app.post("/premiumRequest", async (req, res) => {
+    // create make premium biodata #admin
+    app.post("/premiumRequest", verifyToken, verifyAdmin, async (req, res) => {
       const biodataInfo = req.body;
-      // console.log(biodataInfo);
       const result = await premiumRequestCollection.insertOne(biodataInfo);
       res.send(result);
     });
 
     // get all premium biodata (for admin)
-    app.get("/premiumRequest", async (req, res) => {
+    app.get("/premiumRequest", verifyToken, verifyAdmin, async (req, res) => {
       const query = {
         status: "pending",
       };
@@ -318,68 +351,71 @@ async function run() {
       res.send(result);
     });
 
-    // delete individual premium request
-    app.delete("/delete/premiumRequest/:id", async (req, res) => {
-      const id = req.params.id;
-      console.log(id);
-      const query = {
-        biodataId: parseInt(id),
-      };
-      const result = await premiumRequestCollection.deleteOne(query);
-      res.send(result);
-    });
+    // delete individual premium request #admin
+    app.delete(
+      "/delete/premiumRequest/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = {
+          biodataId: parseInt(id),
+        };
+        const result = await premiumRequestCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
     // update status of premium request
-    app.patch("/update/premiumRequest/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = {
-        biodataId: parseInt(id),
-      };
-      const updateDoc = {
-        $set: {
-          status: "approved",
-        },
-      };
-      const result = await premiumRequestCollection.updateOne(query, updateDoc);
-      res.send(result);
-    });
+    app.patch(
+      "/update/premiumRequest/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = {
+          biodataId: parseInt(id),
+        };
+        const updateDoc = {
+          $set: {
+            status: "approved",
+          },
+        };
+        const result = await premiumRequestCollection.updateOne(
+          query,
+          updateDoc
+        );
+        res.send(result);
+      }
+    );
 
     // create payment
-    app.post("/makePayment", async (req, res) => {
+    app.post("/makePayment", verifyToken, async (req, res) => {
       const payment = req.body;
-      // const query = {
-      //   biodataId: payment.biodataId,
-      //   userEmail: payment.userEmail,
-      // };
-      // const exist = await paymentCollection.findOne(query);
-      // if (exist) {
-      //   return res.send({ message: "Alredy Paid" });
-      // }
+
       const result = await paymentCollection.insertOne(payment);
       res.send(result);
     });
 
     // create favorotes biodata
-    app.post("/favorites", async (req, res) => {
+    app.post("/favorites", verifyToken, async (req, res) => {
       const fvrtBiodata = req.body;
-      // console.log(fvrtBiodata);
       const result = await favoritesCollection.insertOne(fvrtBiodata);
       res.send(result);
     });
 
     // get all fvrts by user email api
-    app.get("/favorites", async (req, res) => {
+    app.get("/favorites", verifyToken, async (req, res) => {
       const { email } = req.query;
       const query = {
         userEmail: email,
       };
       const result = await favoritesCollection.find(query).toArray();
       res.send(result);
-      // console.log(email);
     });
 
     // delete from fvrt by id and email
-    app.delete("/favorite/delete", async (req, res) => {
+    app.delete("/favorite/delete", verifyToken, async (req, res) => {
       const { bioId, email } = req.query;
 
       const query = {
@@ -391,13 +427,13 @@ async function run() {
     });
 
     // create success story
-    app.post("/successStory", async (req, res) => {
+    app.post("/successStory", verifyToken, async (req, res) => {
       const story = req.body;
       const result = await marriedCollection.insertOne(story);
       res.send(result);
     });
 
-    // get success story
+    // get success story #public
     app.get("/successStory", async (req, res) => {
       const result = await marriedCollection
         .find()
@@ -405,24 +441,26 @@ async function run() {
           marriageDate: 1,
         })
         .toArray();
-      console.log(result);
       res.send(result);
     });
 
     // delete success story
-    app.delete("/successStory/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await marriedCollection.deleteOne(query);
-      res.send(result);
-      console.log(id);
-    });
+    app.delete(
+      "/successStory/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await marriedCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
-    //   create user
+    //   create user #public
     app.post("/user", async (req, res) => {
       const user = req.body;
       // check user exist or not
-      // console.log(user);
       const query = { userEmail: user.userEmail };
       const existingUser = await usersCollection.findOne(query);
       if (existingUser) {
@@ -432,22 +470,35 @@ async function run() {
       res.send(result);
     });
 
-    // get all users
-    app.get("/users", async (req, res) => {
+    // get all users #admin
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const { search } = req.query;
       const query = {
         userName: { $regex: search, $options: "i" },
       };
-      // console.log(search);
       const result = await usersCollection.find(query).toArray();
-      // console.log(result);
       res.send(result);
     });
 
+    // check isAdmin
+    app.get("/user/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      let isAdmin = false;
+      if (user) {
+        isAdmin = user?.userRole === "admin";
+      }
+      res.send({ isAdmin });
+    });
+
     // delete user
-    app.delete("/delete/user", async (req, res) => {
+    app.delete("/delete/user", verifyToken, verifyAdmin, async (req, res) => {
       const { targetEmail, user } = req.query;
-      // console.log(targetEmail, user);
       const query = {
         userEmail: targetEmail,
       };
@@ -459,32 +510,35 @@ async function run() {
     });
 
     // update user role
-    app.patch("/user/role/:email", async (req, res) => {
-      const { role } = req.query;
-      const { email } = req.params;
-      // console.log(role, email);
-      const query = {
-        userEmail: email,
-      };
-      if (role === "admin") {
-        const updateDoc = {
-          $set: {
-            userRole: "admin",
-          },
+    app.patch(
+      "/user/role/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { role } = req.query;
+        const { email } = req.params;
+        const query = {
+          userEmail: email,
         };
-        const result = await usersCollection.updateOne(query, updateDoc);
-        return res.send(result);
-      } else if (role === "premium") {
-        const updateDoc = {
-          $set: {
-            userRole: "premium",
-          },
-        };
-        const result = await usersCollection.updateOne(query, updateDoc);
-        res.send(result);
+        if (role === "admin") {
+          const updateDoc = {
+            $set: {
+              userRole: "admin",
+            },
+          };
+          const result = await usersCollection.updateOne(query, updateDoc);
+          return res.send(result);
+        } else if (role === "premium") {
+          const updateDoc = {
+            $set: {
+              userRole: "premium",
+            },
+          };
+          const result = await usersCollection.updateOne(query, updateDoc);
+          res.send(result);
+        }
       }
-      // res.send({ message: "done" });
-    });
+    );
 
     //   payment gateway
     app.post("/create-payment-intent", async (req, res) => {
