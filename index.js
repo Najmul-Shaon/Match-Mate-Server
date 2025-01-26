@@ -92,7 +92,7 @@ async function run() {
 
       const sizeInt = parseInt(size);
       const pageInt = parseInt(page);
-      console.log(pageInt, sizeInt);
+      // console.log(pageInt, sizeInt);
 
       const query = {};
 
@@ -123,9 +123,34 @@ async function run() {
       res.send(result);
     });
 
-    // get biodatas count #public
+    // get biodata count based on filter value #public ##test
+
     app.get("/biodataCounts", async (req, res) => {
-      const count = await biodataCollection.estimatedDocumentCount();
+      const { minAge, maxAge, biodataType, divisions } = req.query;
+
+      const query = {};
+
+      if (minAge || maxAge) {
+        query["personalInfo.age"] = {};
+        if (minAge) {
+          query["personalInfo.age"].$gte = minAge.toString();
+        }
+        if (maxAge) {
+          query["personalInfo.age"].$lte = maxAge.toString();
+        }
+      }
+
+      if (biodataType) {
+        query["personalInfo.biodataType"] = { $in: biodataType.split(",") };
+      }
+
+      if (divisions) {
+        query["personalInfo.address.permanent.division"] = {
+          $in: divisions.split(","),
+        };
+      }
+      const count = await biodataCollection.countDocuments(query);
+
       res.send({ count });
     });
 
