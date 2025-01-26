@@ -58,9 +58,9 @@ async function run() {
     });
 
     // middleware
-    const  verifyToken = (req, res, next) => {
+    const verifyToken = (req, res, next) => {
       if (!req.headers.authorization) {
-        return res.status(401).send({ message: "unauthorized accecss" });
+        return res.status(401).send({ message: "unauthorized access" });
       }
 
       const token = req.headers.authorization.split(" ")[1];
@@ -88,7 +88,11 @@ async function run() {
 
     // get all biodata
     app.get("/biodatas", async (req, res) => {
-      const { minAge, maxAge, biodataType, divisions } = req.query;
+      const { minAge, maxAge, biodataType, divisions, size, page } = req.query;
+
+      const sizeInt = parseInt(size);
+      const pageInt = parseInt(page);
+      console.log(pageInt, sizeInt);
 
       const query = {};
 
@@ -111,8 +115,18 @@ async function run() {
           $in: divisions.split(","),
         };
       }
-      const result = await biodataCollection.find(query).toArray();
+      const result = await biodataCollection
+        .find(query)
+        .skip(pageInt * sizeInt)
+        .limit(sizeInt)
+        .toArray();
       res.send(result);
+    });
+
+    // get biodatas count #public
+    app.get("/biodataCounts", async (req, res) => {
+      const count = await biodataCollection.estimatedDocumentCount();
+      res.send({ count });
     });
 
     // get specific biodata by id (params)
