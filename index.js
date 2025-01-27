@@ -25,7 +25,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
@@ -54,18 +54,23 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: "1h",
       });
+      // console.log("token from jwt ", token);
       res.send({ token });
     });
 
     // middleware
     const verifyToken = (req, res, next) => {
+      console.log(req.headers);
       if (!req.headers.authorization) {
+        console.log("error inside");
         return res.status(401).send({ message: "unauthorized access" });
       }
 
       const token = req.headers.authorization.split(" ")[1];
+      console.log(token);
       jwt.verify(token, process.env.ACCESS_TOKEN, (error, decoded) => {
         if (error) {
+          // console.log("error inside error");
           return res.status(401).send({ message: "unauthorized access" });
         }
         req.decoded = decoded;
@@ -88,11 +93,22 @@ async function run() {
 
     // get all biodata
     app.get("/biodatas", async (req, res) => {
-      const { minAge, maxAge, biodataType, divisions, size, page } = req.query;
+      const {
+        minAge,
+        maxAge,
+        biodataType,
+        divisions,
+        size,
+        page,
+        limit,
+        biodataTypeWithLimit,
+      } = req.query;
 
       const sizeInt = parseInt(size);
       const pageInt = parseInt(page);
+      const limitInt = parseInt(limit);
       // console.log(pageInt, sizeInt);
+      // console.log(biodataTypeWithLimit, limitInt);
 
       const query = {};
 
@@ -108,6 +124,16 @@ async function run() {
 
       if (biodataType) {
         query["personalInfo.biodataType"] = { $in: biodataType.split(",") };
+      }
+
+      if (biodataTypeWithLimit && limitInt) {
+        const result = await biodataCollection
+          .find({
+            "personalInfo.biodataType": biodataTypeWithLimit,
+          })
+          .limit(limitInt)
+          .toArray();
+        return res.send(result);
       }
 
       if (divisions) {
@@ -343,7 +369,7 @@ async function run() {
     });
 
     // delete requested contact by id
-    app.delete("/contactRequest/:biodataId", async (req, res) => {
+    app.delete("/contactRequest/:biodataId", verifyToken, async (req, res) => {
       const { biodataId } = req.params;
       const query = { biodataId: biodataId };
       const result = await contactRequestCollection.deleteOne(query);
@@ -374,8 +400,25 @@ async function run() {
       }
     );
 
-    // create make premium biodata #admin
-    app.post("/premiumRequest", verifyToken, verifyAdmin, async (req, res) => {
+    // check contact request is exit or not #user
+    app.get("/check/requestContact", verifyToken, async (req, res) => {
+      const { id, email } = req.query;
+      const query = {
+        biodataId: id,
+        userEmail: email,
+      };
+
+      const result = await contactRequestCollection.findOne(query);
+      // console.log(typeof id, email, result);
+      let requested = false;
+      if (result) {
+        requested = true;
+      }
+      res.send({ requested });
+    });
+
+    // create make premium biodata #user
+    app.post("/premiumRequest", verifyToken, async (req, res) => {
       const biodataInfo = req.body;
       const result = await premiumRequestCollection.insertOne(biodataInfo);
       res.send(result);
@@ -405,7 +448,7 @@ async function run() {
       }
     );
 
-    // update status of premium request
+    // update status of premium request #admin
     app.patch(
       "/update/premiumRequest/:id",
       verifyToken,
@@ -465,6 +508,26 @@ async function run() {
       res.send(result);
     });
 
+    // check: already added into favorites or not #user
+    app.get("/check/favorite", verifyToken, async (req, res) => {
+      const { id, email } = req.query;
+
+      const query = {
+        biodataId: parseInt(id),
+        userEmail: email,
+      };
+
+      const result = await favoritesCollection.findOne(query);
+
+      let isFavorite = false;
+      if (result) {
+        isFavorite = true;
+      }
+
+      console.log(typeof id, email, result);
+      res.send({ isFavorite });
+    });
+
     // create success story
     app.post("/successStory", verifyToken, async (req, res) => {
       const story = req.body;
@@ -522,6 +585,7 @@ async function run() {
     // check isAdmin
     app.get("/user/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      // console.log(email);
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "forbidden access" });
       }
@@ -533,6 +597,22 @@ async function run() {
         isAdmin = user?.userRole === "admin";
       }
       res.send({ isAdmin });
+    });
+
+    // check is premium
+    app.get("/user/premium/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      const query = { userEmail: email };
+      const user = await usersCollection.findOne(query);
+      let isPremium = false;
+      if (user) {
+        isPremium = user?.userRole === "premium";
+      }
+      res.send({ isPremium });
     });
 
     // delete user
