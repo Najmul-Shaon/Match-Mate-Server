@@ -8,7 +8,15 @@ require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SK);
 
 // middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "https://matchmate-de063.web.app",
+      "https://matchmate-de063.firebaseapp.com/",
+      "http://localhost:5173",
+    ],
+  })
+);
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cwzf5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -27,10 +35,10 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
 
     //   all collections of database
     const biodataCollection = client.db("matchMateDB").collection("bioDatas");
@@ -60,14 +68,14 @@ async function run() {
 
     // middleware
     const verifyToken = (req, res, next) => {
-      console.log(req.headers);
+      // console.log(req.headers);
       if (!req.headers.authorization) {
-        console.log("error inside");
+        // console.log("error inside");
         return res.status(401).send({ message: "unauthorized access" });
       }
 
       const token = req.headers.authorization.split(" ")[1];
-      console.log(token);
+      // console.log(token);
       jwt.verify(token, process.env.ACCESS_TOKEN, (error, decoded) => {
         if (error) {
           // console.log("error inside error");
@@ -524,7 +532,7 @@ async function run() {
         isFavorite = true;
       }
 
-      console.log(typeof id, email, result);
+      // console.log(typeof id, email, result);
       res.send({ isFavorite });
     });
 
