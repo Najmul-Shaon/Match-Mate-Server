@@ -8,15 +8,7 @@ require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SK);
 
 // middleware
-app.use(
-  cors({
-    origin: [
-      "https://matchmate-de063.web.app",
-      "https://matchmate-de063.firebaseapp.com/",
-      "http://localhost:5173",
-    ],
-  })
-);
+app.use(cors());
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cwzf5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -68,7 +60,7 @@ async function run() {
 
     // middleware
     const verifyToken = (req, res, next) => {
-      // console.log(req.headers);
+      // console.log(req.headers.authorization);
       if (!req.headers.authorization) {
         // console.log("error inside");
         return res.status(401).send({ message: "unauthorized access" });
@@ -84,7 +76,6 @@ async function run() {
         req.decoded = decoded;
         next();
       });
-      // next();
     };
 
     // verify Admin
@@ -157,7 +148,7 @@ async function run() {
       res.send(result);
     });
 
-    // get biodata count based on filter value #public ##test
+    // get biodata count based on filter value #public
 
     app.get("/biodataCounts", async (req, res) => {
       const { minAge, maxAge, biodataType, divisions } = req.query;
@@ -189,8 +180,10 @@ async function run() {
     });
 
     // get specific biodata by id (params)
+    // done: need to add token veirfy
 
     app.get("/biodata/details/:biodataId", verifyToken, async (req, res) => {
+      // app.get("/biodata/details/:biodataId", async (req, res) => {
       const biodataIdFromParams = req.params.biodataId;
       const biodataIntIdFromParams = parseInt(biodataIdFromParams);
       const { fields } = req.query;
@@ -209,7 +202,9 @@ async function run() {
     });
 
     // get specific biodata by email (query)
+    // done: need to add token veirfy
     app.get("/biodata", verifyToken, async (req, res) => {
+      // app.get("/biodata", async (req, res) => {
       const queryEmail = req.query.email;
       const query = { userEmail: queryEmail };
       const result = await biodataCollection.findOne(query);
@@ -217,7 +212,9 @@ async function run() {
     });
 
     //   create biodata
+    // done: need to add token veirfy
     app.post("/biodatas", verifyToken, async (req, res) => {
+      // app.post("/biodatas", async (req, res) => {
       try {
         const { userEmail } = req.body;
         const query = { userEmail: userEmail };
@@ -314,7 +311,9 @@ async function run() {
     // ***********************************************
 
     // create contact request #private
+    // done: need to add token veirfy
     app.post("/contactRequest", verifyToken, async (req, res) => {
+      // app.post("/contactRequest", async (req, res) => {
       const request = req.body;
       const query = {
         biodataId: request.biodataId,
@@ -326,7 +325,9 @@ async function run() {
     });
 
     // get requested contacts for specific user by email or if email not provided
+    // done: need to add token veirfy
     app.get("/contactRequest", verifyToken, async (req, res) => {
+      // app.get("/contactRequest", async (req, res) => {
       const userEmail = req.query.email;
 
       const query = {
@@ -377,7 +378,9 @@ async function run() {
     });
 
     // delete requested contact by id
+    // done: need to add token veirfy
     app.delete("/contactRequest/:biodataId", verifyToken, async (req, res) => {
+      // app.delete("/contactRequest/:biodataId", async (req, res) => {
       const { biodataId } = req.params;
       const query = { biodataId: biodataId };
       const result = await contactRequestCollection.deleteOne(query);
@@ -385,6 +388,7 @@ async function run() {
     });
 
     // update contact request (approved) admin
+    // done: need to add token & admin veirfy
     app.patch(
       "/update/contactRequest/:id",
       verifyToken,
@@ -409,7 +413,9 @@ async function run() {
     );
 
     // check contact request is exit or not #user
+    // done: need to add token veirfy
     app.get("/check/requestContact", verifyToken, async (req, res) => {
+      // app.get("/check/requestContact", async (req, res) => {
       const { id, email } = req.query;
       const query = {
         biodataId: id,
@@ -426,14 +432,18 @@ async function run() {
     });
 
     // create make premium biodata #user
+    // done: need to add token veirfy
     app.post("/premiumRequest", verifyToken, async (req, res) => {
+      // app.post("/premiumRequest", async (req, res) => {
       const biodataInfo = req.body;
       const result = await premiumRequestCollection.insertOne(biodataInfo);
       res.send(result);
     });
 
     // get all premium biodata (for admin)
+    // done: need to add token & admin veirfy
     app.get("/premiumRequest", verifyToken, verifyAdmin, async (req, res) => {
+      // app.get("/premiumRequest", async (req, res) => {
       const query = {
         status: "pending",
       };
@@ -442,6 +452,7 @@ async function run() {
     });
 
     // delete individual premium request #admin
+    // done: need to add token & admin veirfy
     app.delete(
       "/delete/premiumRequest/:id",
       verifyToken,
@@ -457,6 +468,7 @@ async function run() {
     );
 
     // update status of premium request #admin
+    // done: need to add token & admin veirfy
     app.patch(
       "/update/premiumRequest/:id",
       verifyToken,
@@ -480,7 +492,9 @@ async function run() {
     );
 
     // create payment
+    // done: need to add token veirfy
     app.post("/makePayment", verifyToken, async (req, res) => {
+      // app.post("/makePayment", async (req, res) => {
       const payment = req.body;
 
       const result = await paymentCollection.insertOne(payment);
@@ -488,14 +502,18 @@ async function run() {
     });
 
     // create favorotes biodata
+    // done: need to add token veirfy
     app.post("/favorites", verifyToken, async (req, res) => {
+      // app.post("/favorites", async (req, res) => {
       const fvrtBiodata = req.body;
       const result = await favoritesCollection.insertOne(fvrtBiodata);
       res.send(result);
     });
 
     // get all fvrts by user email api
+    // done: need to add token veirfy
     app.get("/favorites", verifyToken, async (req, res) => {
+      // app.get("/favorites", async (req, res) => {
       const { email } = req.query;
       const query = {
         userEmail: email,
@@ -505,7 +523,9 @@ async function run() {
     });
 
     // delete from fvrt by id and email
+    // done: need to add token veirfy
     app.delete("/favorite/delete", verifyToken, async (req, res) => {
+      // app.delete("/favorite/delete", async (req, res) => {
       const { bioId, email } = req.query;
 
       const query = {
@@ -517,7 +537,9 @@ async function run() {
     });
 
     // check: already added into favorites or not #user
+    // done: need to add token veirfy
     app.get("/check/favorite", verifyToken, async (req, res) => {
+      // app.get("/check/favorite", async (req, res) => {
       const { id, email } = req.query;
 
       const query = {
@@ -537,7 +559,9 @@ async function run() {
     });
 
     // create success story
+    // done: need to add token veirfy
     app.post("/successStory", verifyToken, async (req, res) => {
+      // app.post("/successStory", async (req, res) => {
       const story = req.body;
       const result = await marriedCollection.insertOne(story);
       res.send(result);
@@ -555,6 +579,7 @@ async function run() {
     });
 
     // delete success story
+    // done: need to add token & admin veirfy
     app.delete(
       "/successStory/:id",
       verifyToken,
@@ -581,7 +606,9 @@ async function run() {
     });
 
     // get all users #admin
+    // done: need to add token & admin veirfy
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+      // app.get("/users", async (req, res) => {
       const { search } = req.query;
       const query = {
         userName: { $regex: search, $options: "i" },
@@ -591,7 +618,10 @@ async function run() {
     });
 
     // check isAdmin
+    // done: need to umcomment
+    // done: need to add token veirfy
     app.get("/user/admin/:email", verifyToken, async (req, res) => {
+      // app.get("/user/admin/:email", async (req, res) => {
       const email = req.params.email;
       // console.log(email);
       if (email !== req.decoded.email) {
@@ -608,7 +638,9 @@ async function run() {
     });
 
     // check is premium
+    // done: need to add token veirfy
     app.get("/user/premium/:email", verifyToken, async (req, res) => {
+      // app.get("/user/premium/:email", async (req, res) => {
       const email = req.params.email;
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "forbidden access" });
@@ -624,7 +656,9 @@ async function run() {
     });
 
     // delete user
+    // done: need to add token & admin veirfy
     app.delete("/delete/user", verifyToken, verifyAdmin, async (req, res) => {
+      // app.delete("/delete/user", async (req, res) => {
       const { targetEmail, user } = req.query;
       const query = {
         userEmail: targetEmail,
@@ -637,6 +671,7 @@ async function run() {
     });
 
     // update user role
+    // done: need to add token & admin veirfy
     app.patch(
       "/user/role/:email",
       verifyToken,
