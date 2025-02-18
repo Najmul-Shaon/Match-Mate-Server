@@ -262,7 +262,7 @@ async function run() {
           userEmail: { $in: premiumUsersEmail },
         })
         .sort({ "personalInfo.age": setOrder })
-        .limit(6)
+        .limit(8)
         .toArray();
       res.send(premiumBiodata);
     });
