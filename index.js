@@ -93,6 +93,7 @@ async function run() {
     // get all biodata
     app.get("/biodatas", async (req, res) => {
       const {
+        sortBy,
         minAge,
         maxAge,
         biodataType,
@@ -103,11 +104,22 @@ async function run() {
         biodataTypeWithLimit,
       } = req.query;
 
+      // ************************
+      const setOrder = sortBy ? (sortBy === "asc" ? 1 : -1) : null;
+      // const setOrder = sortBy === "asc" ? 1 : -1;
+      const sortQuery = {};
+      if (setOrder === 1) {
+        sortQuery["personalInfo.age"] = 1;
+      } else if (setOrder === -1) {
+        sortQuery["personalInfo.age"] = -1;
+      }
+
+      // console.log(req.query, sortQuery);
+      // ************************
+
       const sizeInt = parseInt(size);
       const pageInt = parseInt(page);
       const limitInt = parseInt(limit);
-      // console.log(pageInt, sizeInt);
-      // console.log(biodataTypeWithLimit, limitInt);
 
       const query = {};
 
@@ -142,6 +154,7 @@ async function run() {
       }
       const result = await biodataCollection
         .find(query)
+        .sort(sortQuery)
         .skip(pageInt * sizeInt)
         .limit(sizeInt)
         .toArray();
@@ -246,7 +259,7 @@ async function run() {
       } catch (error) {}
     });
     // ***********************************************
-    // featured profile (premium profile:max 6) public
+    // featured profile (premium profile:max 8) public
     // ***********************************************
     app.get("/premiumProfile", async (req, res) => {
       const { sortby } = req.query;
